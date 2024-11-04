@@ -3,7 +3,7 @@ from typing import Dict
 import sqlite3
 from datetime import date
 
-DATABASE_NAME = 'chess_new.db'
+DATABASE_NAME = 'chess_rating.db'
 SQL_CREATE_TABLE = """CREATE TABLE IF NOT EXISTS rating (
                     Name text,
                     Bullet integer,
@@ -13,7 +13,7 @@ SQL_CREATE_TABLE = """CREATE TABLE IF NOT EXISTS rating (
                     )"""
 
 
-PLAYERS = ('Evgeniy1989', 'Pyrog_Ivan')
+PLAYERS = ('Evgeniy1989', 'Pyrog_Ivan', 'Viposha')
 
 
 def initialize_db():
