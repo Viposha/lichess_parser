@@ -1,7 +1,6 @@
 /venv
 /lichess_env
-snippet.txt
 chess_rating.db
 __pycache__/
 *.pyc
-snippet.txt
+*.txt
