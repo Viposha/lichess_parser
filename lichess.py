@@ -69,4 +69,3 @@ for player in PLAYERS:
     if response.status_code == 200:
         name_data = get_rating(response.text, player)
         insert_rating(name_data)
-
