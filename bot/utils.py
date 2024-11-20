@@ -4,6 +4,7 @@ import sqlite3
 from datetime import date
 
 today = date.today()
+
 DATABASE_NAME = '/root/projects/lichess_parser/chess_rating.db'
 
 
