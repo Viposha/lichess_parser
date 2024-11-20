@@ -1,2 +1,0 @@
-scp root@157.230.112.86:/root/chess_rating.db /Users/qqq/Viposha/python_new/lichess_parser
-scp /Users/qqq/Viposha/python_new/lichess_parser root@157.230.112.86:/root/chess_rating.db
