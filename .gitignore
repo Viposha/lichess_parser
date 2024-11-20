@@ -1,5 +1,6 @@
-/venv
+venv/
 snippet.txt
 chess_rating.db
 chess_new.db
- __pycache__/
+__pycache__/
+lichess_env/
