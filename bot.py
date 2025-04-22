@@ -2,7 +2,7 @@ import os
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 import sqlite3
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from bs4 import BeautifulSoup
 from typing import Dict
 import requests
@@ -135,12 +135,17 @@ async def handle_rating_selection(callback_query: CallbackQuery):
     else:
         response = f"No results found for player '{player_name}' with rating type '{rating_type}'."
 
+
+    # Filter data to only include the last month's ratings
+    one_month_ago = datetime.now() - timedelta(days=30)
+    filtered_rows = [row for row in rows if datetime.strptime(row[0], '%Y-%m-%d') >= one_month_ago]
+
     # Get data from the database
     data = get_rating_by_name_and_type(player_name, rating_type)
 
     # Prepare data for plotting
-    dates = [entry[0] for entry in data]
-    bullet_ratings = [entry[1] for entry in data]
+    dates = [entry[0] for entry in filtered_rows]
+    bullet_ratings = [entry[1] for entry in filtered_rows]
     bullet_ratings = [0 if x == '' or x == 'None' else x for x in bullet_ratings]
 
     # Generate the plot
