@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /venv
 /lichess_env
 chess_rating.db
@@ -6,3 +7,12 @@ __pycache__/
 *.txt
 bullet_rating.png
 snippet.txt
+=======
+venv/
+chess_rating.db
+chess_new.db
+__pycache__/
+lichess_env/
+snip.txt
+.idea/
+>>>>>>> testing
