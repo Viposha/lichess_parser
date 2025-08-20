@@ -196,7 +196,7 @@ async def cmd_start(message: types.Message):
         if response.status_code == 200:
             name_data = get_rating(response.text, player)
             result += (
-                f"Rating of {player}:\n"
+                f"{player}:\n"
                 f"  Bullet = {name_data['Bullet']}\n"
                 f"  Blitz = {name_data['Blitz']}\n"
                 f"  Rapid = {name_data['Rapid']}\n"
