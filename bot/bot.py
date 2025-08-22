@@ -1,18 +1,35 @@
 import os
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+import sqlite3
 from datetime import date, datetime, timedelta
-from utils import get_rating, get_all_player_ratings, get_rating_by_name_and_type
+from bs4 import BeautifulSoup
+from typing import Dict
 import requests
 import matplotlib.pyplot as plt
 from aiogram.filters import Command
 from aiogram.types import FSInputFile
 from aiogram.fsm.storage.memory import MemoryStorage
 import matplotlib.dates as mdates
+import json
 
 today = date.today()
 PLAYERS = ('Evgeniy1989', 'Pyrog_Ivan', 'Viposha')
 RATING_TYPES = ('Bullet', 'Blitz', 'Rapid')
+DATABASE_NAME = '/root/chess_rating.db'
+STATUS_MAP = {
+    "mate": "by checkmate",
+    "resign": "by resignation",
+    "outoftime": "on time",
+    "draw": "drawn",
+    "stalemate": "by stalemate",
+    "aborted": "aborted",
+    "timeout": "on time",
+    "noStart": "not started",
+    "cheat": "game ended due to cheat detection",
+    "variantEnd": "variant end",
+    "unknownFinish": "finished (reason unknown)"
+}
 
 # Dictionary to store the selected player names by user_id
 user_selected_players = {}
@@ -22,6 +39,60 @@ bot = Bot(token=tok)
 
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
+
+
+def get_rating(source, nick:str) -> Dict:
+    """Parse lichess.com for 1 player and return data in dict"""
+    name = {'nickname': nick, 'Bullet': None, 'Blitz': None, 'Rapid': None}
+    ratings = ('Bullet', 'Blitz', 'Rapid')
+
+    soup = BeautifulSoup(source, 'lxml')
+
+    # Find all 'a' tags with titles that include the game types
+    links = soup.find_all('a', title=True)
+    for link in links:
+        if link.span.h3.text in ratings:
+            try:
+                ratio = link.span.rating.strong.text.replace('?', "")
+                ratio = int(ratio) if ratio else None
+                name[f'{link.span.h3.text}'] = f'{ratio}'
+            except Exception as e:
+                print(e)
+    return name
+
+def get_all_player_ratings():
+    connection = sqlite3.connect('/root/chess_rating.db')
+    cursor = connection.cursor()
+
+    # Select all Blitz ratings for the given name
+    cursor.execute("SELECT Name, Bullet, Blitz, Rapid, Date FROM rating WHERE Date = ?", (today,))
+    results = cursor.fetchall()  # Fetch all matching results
+
+    connection.close()
+
+    # Return results as a list of dictionaries for better readability
+    players = [
+        {
+            'Name': row[0],
+            'Bullet': row[1],
+            'Blitz': row[2],
+            'Rapid': row[3],
+            'Date': row[4]
+        }
+        for row in results
+    ]
+    return players
+
+
+# Function to query database for selected player name and rating type
+def get_rating_by_name_and_type(player_name, rating_type):
+    conn = sqlite3.connect('/root/chess_rating.db')
+    cursor = conn.cursor()
+    # SQL query to select Date and the selected rating type for the given player name
+    cursor.execute(f"SELECT Date, {rating_type} FROM rating WHERE Name = ?", (player_name,))
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
 
 
 # Command handler for /graph to ask user to choose a player name
@@ -78,6 +149,8 @@ async def handle_rating_selection(callback_query: CallbackQuery):
     else:
         response = f"No results found for player '{player_name}' with rating type '{rating_type}'."
 
+
+    # Filter data to only include the last month's ratings
     one_month_ago = datetime.now() - timedelta(days=30)
     filtered_rows = [row for row in rows if datetime.strptime(row[0], '%Y-%m-%d') >= one_month_ago]
 
@@ -86,7 +159,7 @@ async def handle_rating_selection(callback_query: CallbackQuery):
 
     # Prepare data for plotting
     dates = [entry[0] for entry in filtered_rows]
-    bullet_ratings = [entry[1] for entry in data]
+    bullet_ratings = [entry[1] for entry in filtered_rows]
     bullet_ratings = [0 if x == '' or x == 'None' else x for x in bullet_ratings]
 
     # Generate the plot
@@ -166,9 +239,63 @@ async def cmd_start(message: types.Message):
     # Send the response to the user
     await message.reply(response)
 
+# команда /lastgame
+@dp.message(Command("last"))
+async def lastgame_command_handler(message: Message):
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=player, callback_data=f"last_player_{player}")]
+            for player in PLAYERS
+        ]
+    )
+    await message.answer("Оберіть гравця:", reply_markup=keyboard)
 
-async def main():
-    await dp.start_polling(bot)
+
+# callback: користувач обрав гравця
+@dp.callback_query(lambda c: c.data.startswith("last_player_"))
+async def handle_lastgame_selection(callback_query: CallbackQuery):
+    player_name = callback_query.data.split("last_player_")[1]
+
+    # 1. Fetch last game
+    url = f"https://lichess.org/api/games/user/{player_name}?max=1&moves=true"
+    res = requests.get(url, headers={"Accept": "application/x-ndjson"})
+
+    game_json = json.loads(res.text.strip().split("\n")[0])
+
+    # 2. Extract players
+    players = game_json["players"]
+    white = players["white"]
+    black = players["black"]
+
+    white_name = white["user"]["name"]
+    white_rating = white.get("rating", "N/A")
+
+    black_name = black["user"]["name"]
+    black_rating = black.get("rating", "N/A")
+
+    # 3. Extract winner, status, moves
+    winner = game_json.get("winner")  # "white" or "black"
+    status_code = game_json.get("status", "unknownFinish")
+    status_text = STATUS_MAP.get(status_code, status_code)
+
+    moves_str = game_json["moves"]
+    num_moves = len(moves_str.split()) // 2
+    variant = game_json["variant"]
+    speed = game_json["speed"]
+
+    # 4. Build summary
+    if winner:
+        if winner == "white":
+            result = f"{white_name} ({white_rating}) wins vs {black_name} ({black_rating})"
+        else:
+            result = f"{black_name} ({black_rating}) wins vs {white_name} ({white_rating})"
+        summary = f"{result} {status_text} in {num_moves} moves in {variant} game. Time control {speed}"
+    else:
+        summary = f"Game between {white_name} ({white_rating}) and {black_name} ({black_rating}) ended {status_text} in {num_moves} moves."
+
+    await callback_query.message.answer(summary)
+    await callback_query.answer()
+
 
 if __name__ == "__main__":
     import asyncio
