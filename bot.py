@@ -242,6 +242,7 @@ async def cmd_start(message: types.Message):
 # команда /lastgame
 @dp.message(Command("last"))
 async def lastgame_command_handler(message: Message):
+    print("LASTGAME command triggered")
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text=player, callback_data=f"last_player_{player}")]
