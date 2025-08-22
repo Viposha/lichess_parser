@@ -1,6 +1,6 @@
 import os
 from aiogram import Bot, Dispatcher, types
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, BotCommand
 import sqlite3
 from datetime import date, datetime, timedelta
 from bs4 import BeautifulSoup
@@ -31,6 +31,15 @@ STATUS_MAP = {
     "unknownFinish": "finished (reason unknown)"
 }
 
+COMMANDS = [
+    ("start",  "Start the bot"),
+    ("help",   "Show all available commands"),
+    ("last",   "Last played game"),
+    ("graph",  "Show rating graph"),
+    ("rating", "Show ratings from DB"),
+    ("live",   "Show live ratings"),
+]
+
 # Dictionary to store the selected player names by user_id
 user_selected_players = {}
 
@@ -40,6 +49,19 @@ bot = Bot(token=tok)
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
 
+
+
+async def set_bot_commands():
+    await bot.set_my_commands(
+        [BotCommand(command=c, description=d) for c, d in COMMANDS]
+    )
+
+@dp.message(Command("help"))
+async def cmd_help(message: types.Message):
+    text = "🤖 Available commands:\n\n" + "\n".join(
+        f"/{c} - {d}" for c, d in COMMANDS
+    )
+    await message.answer(text)
 
 def get_rating(source, nick:str) -> Dict:
     """Parse lichess.com for 1 player and return data in dict"""
@@ -297,6 +319,11 @@ async def handle_lastgame_selection(callback_query: CallbackQuery):
     await callback_query.answer()
 
 
+async def main():
+    await set_bot_commands()
+    print("🤖 Bot started. Commands registered. Listening for updates...")
+    await dp.start_polling(bot)
+
 if __name__ == "__main__":
     import asyncio
-    asyncio.run(dp.start_polling(bot))
+    asyncio.run(main())
