@@ -11,11 +11,25 @@ from aiogram.filters import Command
 from aiogram.types import FSInputFile
 from aiogram.fsm.storage.memory import MemoryStorage
 import matplotlib.dates as mdates
+import json
 
 today = date.today()
 PLAYERS = ('Evgeniy1989', 'Pyrog_Ivan', 'Viposha')
 RATING_TYPES = ('Bullet', 'Blitz', 'Rapid')
 DATABASE_NAME = '/root/chess_rating.db'
+STATUS_MAP = {
+    "mate": "by checkmate",
+    "resign": "by resignation",
+    "outoftime": "on time",
+    "draw": "drawn",
+    "stalemate": "by stalemate",
+    "aborted": "aborted",
+    "timeout": "on time",
+    "noStart": "not started",
+    "cheat": "game ended due to cheat detection",
+    "variantEnd": "variant end",
+    "unknownFinish": "finished (reason unknown)"
+}
 
 # Dictionary to store the selected player names by user_id
 user_selected_players = {}
@@ -225,6 +239,62 @@ async def cmd_start(message: types.Message):
     # Send the response to the user
     await message.reply(response)
 
+# команда /lastgame
+@dp.message(Command("last"))
+async def lastgame_command_handler(message: Message):
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=player, callback_data=f"last_player_{player}")]
+            for player in PLAYERS
+        ]
+    )
+    await message.answer("Оберіть гравця:", reply_markup=keyboard)
+
+
+# callback: користувач обрав гравця
+@dp.callback_query(lambda c: c.data.startswith("last_player_"))
+async def handle_lastgame_selection(callback_query: CallbackQuery):
+    player_name = callback_query.data.split("last_player_")[1]
+
+    # 1. Fetch last game
+    url = f"https://lichess.org/api/games/user/{player_name}?max=1&moves=true"
+    res = requests.get(url, headers={"Accept": "application/x-ndjson"})
+
+    game_json = json.loads(res.text.strip().split("\n")[0])
+
+    # 2. Extract players
+    players = game_json["players"]
+    white = players["white"]
+    black = players["black"]
+
+    white_name = white["user"]["name"]
+    white_rating = white.get("rating", "N/A")
+
+    black_name = black["user"]["name"]
+    black_rating = black.get("rating", "N/A")
+
+    # 3. Extract winner, status, moves
+    winner = game_json.get("winner")  # "white" or "black"
+    status_code = game_json.get("status", "unknownFinish")
+    status_text = STATUS_MAP.get(status_code, status_code)
+
+    moves_str = game_json["moves"]
+    num_moves = len(moves_str.split()) // 2
+    variant = game_json["variant"]
+    speed = game_json["speed"]
+
+    # 4. Build summary
+    if winner:
+        if winner == "white":
+            result = f"{white_name} ({white_rating}) wins vs {black_name} ({black_rating})"
+        else:
+            result = f"{black_name} ({black_rating}) wins vs {white_name} ({white_rating})"
+        summary = f"{result} {status_text} in {num_moves} moves in {variant} game. Time control {speed}"
+    else:
+        summary = f"Game between {white_name} ({white_rating}) and {black_name} ({black_rating}) ended {status_text} in {num_moves} moves."
+
+    await callback_query.message.answer(summary)
+    await callback_query.answer()
 
 async def main():
     await dp.start_polling(bot)
