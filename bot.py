@@ -296,8 +296,6 @@ async def handle_lastgame_selection(callback_query: CallbackQuery):
     await callback_query.message.answer(summary)
     await callback_query.answer()
 
-async def main():
-    await dp.start_polling(bot)
 
 if __name__ == "__main__":
     import asyncio
