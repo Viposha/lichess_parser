@@ -87,15 +87,11 @@ def get_all_player_ratings():
     cursor = connection.cursor()
 
     # Select all Blitz ratings for the given name
-    # cursor.execute("SELECT MAX(Date) FROM rating")
-    # last_date = cursor.fetchone()[0]
-    # cursor.execute("SELECT Name, Bullet, Blitz, Rapid, Date FROM rating WHERE Date = ?", (last_date,))
-    # results = cursor.fetchall()
-
-
-    # Вибираємо всі записи без фільтру по даті
-    cursor.execute("SELECT Name, Bullet, Blitz, Rapid, Date FROM rating")
-    results = cursor.fetchall()  # Отримуємо всі записи
+    cursor.execute("SELECT MAX(Date) FROM rating")
+    last_date = cursor.fetchone()[0]
+    print(last_date)
+    cursor.execute("SELECT Name, Bullet, Blitz, Rapid, Date FROM rating WHERE Date = ?", (last_date,))
+    results = cursor.fetchall()
 
     connection.close()
 
