@@ -16,7 +16,7 @@ import json
 today = date.today()
 PLAYERS = ('Evgeniy1989', 'Pyrog_Ivan', 'Viposha')
 RATING_TYPES = ('Bullet', 'Blitz', 'Rapid')
-DATABASE_NAME = '/root/chess_rating.db'
+DATABASE_NAME = '/root/projects/lichess_parser/chess_rating.db'
 STATUS_MAP = {
     "mate": "by checkmate",
     "resign": "by resignation",
@@ -61,7 +61,7 @@ def get_rating(source, nick:str) -> Dict:
     return name
 
 def get_all_player_ratings():
-    connection = sqlite3.connect('/root/chess_rating.db')
+    connection = sqlite3.connect('/root/projects/lichess_parser/chess_rating.db')
     cursor = connection.cursor()
 
     # Select all Blitz ratings for the given name
@@ -86,7 +86,7 @@ def get_all_player_ratings():
 
 # Function to query database for selected player name and rating type
 def get_rating_by_name_and_type(player_name, rating_type):
-    conn = sqlite3.connect('/root/chess_rating.db')
+    conn = sqlite3.connect('//root/projects/lichess_parser/chess_rating.db')
     cursor = conn.cursor()
     # SQL query to select Date and the selected rating type for the given player name
     cursor.execute(f"SELECT Date, {rating_type} FROM rating WHERE Name = ?", (player_name,))
