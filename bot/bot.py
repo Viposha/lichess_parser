@@ -89,7 +89,6 @@ def get_all_player_ratings():
     # Select all Blitz ratings for the given name
     cursor.execute("SELECT MAX(Date) FROM rating")
     last_date = cursor.fetchone()[0]
-    print(last_date)
     cursor.execute("SELECT Name, Bullet, Blitz, Rapid, Date FROM rating WHERE Date = ?", (last_date,))
     results = cursor.fetchall()
 
